@@ -3,7 +3,7 @@
 #include <omp.h>
 using namespace std;
 
-void dfsRec(vector<vector<int>> &adj, vector<bool> &visited, int s, vector<int> &res) {
+void dfsRec(vector<vector<int>> &adj, vector<bool> &visited, int s, vector<int> &res, int stride) {
     #pragma omp critical
     {
         if (!visited[s])
@@ -19,8 +19,9 @@ void dfsRec(vector<vector<int>> &adj, vector<bool> &visited, int s, vector<int> 
         work += (s * i) % 100;
     }
 
-    for (int i : adj[s])
+    for (int idx = 0; idx < adj[s].size(); idx += stride)
     {
+        int i = adj[s][idx];
         bool needsVisit = false;
 
         #pragma omp critical
@@ -31,14 +32,35 @@ void dfsRec(vector<vector<int>> &adj, vector<bool> &visited, int s, vector<int> 
         if (needsVisit) {
             #pragma omp task shared(adj, visited, res)
             {
-                dfsRec(adj, visited, i, res);
+                dfsRec(adj, visited, i, res, stride);
+            }
+        }
+    }
+    
+    for (int idx = 0; idx < adj[s].size(); idx++)
+    {
+        if (idx % stride != 0)
+        {
+            int i = adj[s][idx];
+            bool needsVisit = false;
+
+            #pragma omp critical
+            {
+                needsVisit = !visited[i];
+            }
+
+            if (needsVisit) {
+                #pragma omp task shared(adj, visited, res)
+                {
+                    dfsRec(adj, visited, i, res, stride);
+                }
             }
         }
     }
     #pragma omp taskwait
 }
 
-vector<int> dfs(vector<vector<int>> &adj)
+vector<int> dfs(vector<vector<int>> &adj, int stride)
 {
     vector<bool> visited(adj.size(), false);
     vector<int> res;
@@ -51,7 +73,7 @@ vector<int> dfs(vector<vector<int>> &adj)
             {
                 if (visited[i] == false)
                 {
-                    dfsRec(adj, visited, i, res);
+                    dfsRec(adj, visited, i, res, stride);
                 }
                 }
         }
@@ -81,26 +103,35 @@ int main()
 
     cout << "Graph created successfully!" << endl;
 
-    cout << "DFS Traversal of the graph (Parallel):" << endl;
+    int strides[] = {1, 2, 4, 8, 16};
+    int num_strides = sizeof(strides) / sizeof(strides[0]);
 
-    double start = omp_get_wtime();
-
-    vector<int> result = dfs(adj);
-
-    double end = omp_get_wtime();
-
-    double time_seconds = end - start;
-    double time_ms = time_seconds * 1000.0;
-
-    cout << "Total vertices visited: " << result.size() << endl;
-    cout << "First 10 vertices: ";
-    for (int i = 0; i < 10 && i < result.size(); i++)
+    for (int s = 0; s < num_strides; s++)
     {
-        cout << result[i] << " ";
+        int stride = strides[s];
+        cout << "DFS Traversal of the graph (Parallel):" << endl;
+        cout << "Stride size: " << stride << endl;
+
+        double start = omp_get_wtime();
+
+        vector<int> result = dfs(adj, stride);
+
+        double end = omp_get_wtime();
+
+        double time_seconds = end - start;
+        double time_ms = time_seconds * 1000.0;
+
+        cout << "Total vertices visited: " << result.size() << endl;
+        cout << "First 10 vertices: ";
+        for (int i = 0; i < 10 && i < result.size(); i++)
+        {
+            cout << result[i] << " ";
+        }
+        cout << "..." << endl;
+        cout << "Execution time: " << time_ms << " milliseconds (ms)" << endl;
+        cout << "Number of threads used: " << omp_get_max_threads() << endl;
+        cout << endl;
     }
-    
-    cout << "..." << endl << "Execution time: " << time_ms << " milliseconds (ms)" << endl;  
-    cout << "Number of threads used: " << omp_get_max_threads() << endl;
 
     return 0;
 }
