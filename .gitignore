@@ -1,0 +1,34 @@
+# Compiled binaries and executables
+*.exe
+*.out
+serial
+parallel
+*.o
+*.obj
+
+# Compiled C++ files
+*.so
+*.a
+*.dll
+*.dylib
+
+# Build directories
+build/
+bin/
+obj/
+
+# IDE files
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
