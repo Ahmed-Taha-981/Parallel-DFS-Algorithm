@@ -2,18 +2,23 @@
 
 ## Executive Summary
 
-This report presents the performance analysis of the parallel Depth-First Search (DFS) traversal implementation using OpenMP. We measure serial execution time (T_S) and parallel execution times (T_P) for different thread counts (1, 2, 4, 8), compute speedup and efficiency metrics, and analyze the results using Amdahl's Law.
+This report presents the performance analysis of the parallel Depth-First Search (DFS) traversal implementation using OpenMP. We measure serial execution time (T_S) and parallel execution times (T_P) for different thread counts (2, 4, 8, 16), compute speedup and efficiency metrics, and analyze the results using Amdahl's Law.
+
+**Key Finding**: The parallel implementation demonstrates **negative speedup** (speedup < 1.0) across all thread counts tested, with the serial version outperforming the parallel version by 5.5× to 17.5×. This is primarily due to excessive synchronization overhead from critical sections used to prevent race conditions. The implementation correctly avoids race conditions but at a significant performance cost. For graph sizes of 10,000 vertices or smaller, the serial implementation is recommended.
 
 ---
 
 ## Methodology
 
 ### Test Configuration
-- **Graph Size**: 50,000 vertices
+- **Graph Size**: 10,000 vertices
 - **Algorithm**: Depth-First Search (DFS) traversal
-- **Thread Counts Tested**: 1, 2, 4, 8
+- **Thread Counts Tested**: 2, 4, 8, 16
 - **Iterations**: 5 runs per configuration (averaged)
 - **Compiler Flags**: `-fopenmp -O2 -std=c++11`
+- **System**: WSL (Windows Subsystem for Linux)
+
+**Note on Graph Size**: Initial tests with 50,000 vertices resulted in stack overflow errors due to deep recursion. The graph size was reduced to 10,000 vertices for successful execution. This limitation highlights a constraint of the recursive DFS approach in parallel environments.
 
 ### Performance Metrics
 1. **T_S**: Serial execution time (baseline)
@@ -29,14 +34,12 @@ This report presents the performance analysis of the parallel Depth-First Search
 
 | Threads (p) | T_P (seconds) | Speedup (S) | Efficiency (E) |
 |-------------|---------------|-------------|----------------|
-| 1           | [TBD]         | [TBD]       | [TBD]          |
-| 2           | [TBD]         | [TBD]       | [TBD]          |
-| 4           | [TBD]         | [TBD]       | [TBD]          |
-| 8           | [TBD]         | [TBD]       | [TBD]          |
+| 2           | 0.003119      | 0.1829      | 0.0915 (9.15%) |
+| 4           | 0.004229      | 0.1349      | 0.0337 (3.37%) |
+| 8           | 0.008202      | 0.0696      | 0.0087 (0.87%) |
+| 16          | 0.009997      | 0.0571      | 0.0036 (0.36%) |
 
-**Serial Time (T_S)**: [TBD] seconds
-
-*Note: Replace [TBD] with actual measurements from running `profile.exe`*
+**Serial Time (T_S)**: 0.000571 seconds (0.571 milliseconds)
 
 ---
 
@@ -91,23 +94,29 @@ For the DFS implementation analyzed:
 
 **Ideal Speedup**: Linear speedup would show S(p) = p
 
-**Expected Behavior**:
-- **p = 1**: Speedup ≈ 1.0 (baseline, may be slightly less due to OpenMP overhead)
-- **p = 2**: Speedup < 2.0 (due to serial bottlenecks)
-- **p = 4**: Speedup < 4.0 (diminishing returns)
-- **p = 8**: Speedup < 8.0 (likely plateaus due to Amdahl's Law limit)
+**Actual Behavior Observed**:
+- **p = 2**: Speedup = 0.18 (parallel version is 5.5x **slower** than serial)
+- **p = 4**: Speedup = 0.13 (parallel version is 7.4x **slower** than serial)
+- **p = 8**: Speedup = 0.07 (parallel version is 14.4x **slower** than serial)
+- **p = 16**: Speedup = 0.06 (parallel version is 17.5x **slower** than serial)
+
+**Critical Finding**: The parallel implementation performs worse than the serial version across all thread counts. This indicates that the **parallelization overhead exceeds the computational benefits** for this problem size and implementation approach.
 
 ### Efficiency Analysis
 
 **Ideal Efficiency**: E(p) = 1.0 (100%) indicates perfect parallelization
 
-**Expected Behavior**:
-- Efficiency typically decreases as thread count increases
-- Lower efficiency indicates:
-  - Serial bottlenecks
-  - Overhead from synchronization
-  - Load imbalance
-  - Cache contention
+**Actual Behavior Observed**:
+- **p = 2**: E = 0.0915 (9.15% efficiency)
+- **p = 4**: E = 0.0337 (3.37% efficiency)
+- **p = 8**: E = 0.0087 (0.87% efficiency)
+- **p = 16**: E = 0.0036 (0.36% efficiency)
+
+**Analysis**: Extremely low efficiency values (all below 10%) indicate severe performance degradation. The primary causes include:
+- **Excessive synchronization overhead**: Critical sections dominate execution time
+- **Task creation overhead**: OpenMP task management costs exceed benefits
+- **Serial bottlenecks**: Frequent sequential access to shared data structures
+- **Cache contention**: Multiple threads competing for the same memory locations
 
 ### Scalability Limits
 
@@ -126,6 +135,19 @@ If f_serial = 0.2 (20% serial), maximum speedup = 5x
 ---
 
 ## Discussion
+
+### Race Condition Prevention
+
+**Implementation Update**: The parallel DFS implementation was updated to properly avoid race conditions:
+
+1. **Critical Section Protection**: All accesses to shared data structures (`visited` array and `res` vector) are protected by `#pragma omp critical` directives
+2. **Atomic Check-and-Set**: The pattern of checking if a vertex is visited and marking it as visited is done atomically within critical sections
+3. **Thread Safety**: The implementation ensures that:
+   - No two threads can simultaneously mark the same vertex as visited
+   - The result vector is safely updated without data races
+   - All memory operations are properly synchronized
+
+**Trade-off**: While these critical sections successfully prevent race conditions, they create a significant performance bottleneck. Every vertex visit requires acquiring a lock, which serializes much of the computation and explains the poor parallel performance observed.
 
 ### Factors Affecting Performance
 
@@ -177,29 +199,42 @@ If f_serial = 0.2 (20% serial), maximum speedup = 5x
 
 ### Key Findings
 
-1. **Serial Fraction**: The implementation has a significant serial component due to critical sections
-2. **Speedup**: Sublinear speedup is observed, consistent with Amdahl's Law predictions
-3. **Efficiency**: Efficiency decreases as thread count increases
-4. **Optimal Thread Count**: Based on efficiency, there is likely an optimal thread count (typically 2-4 for this problem)
+1. **Negative Speedup**: The parallel implementation is consistently slower than the serial version across all thread counts (speedup < 1.0)
+2. **Extremely Low Efficiency**: Efficiency ranges from 9.15% (2 threads) down to 0.36% (16 threads)
+3. **Performance Degradation**: As thread count increases, performance worsens due to increased synchronization overhead
+4. **Overhead Dominance**: The overhead from task creation, critical sections, and synchronization far exceeds any parallel benefit
+5. **Conclusion**: **For this graph size (10,000 vertices), the serial implementation is superior**
 
 ### Recommendations
 
-1. **Reduce Critical Sections**:
-   - Use thread-local visited arrays and merge at the end
-   - Use atomic operations where possible instead of critical sections
-   - Reduce frequency of shared data access
+1. **Use Serial Implementation for Small Graphs**:
+   - For graphs with ≤10,000 vertices, the serial version is more efficient
+   - Avoid parallel overhead for problems where computation time is minimal
 
-2. **Optimize Task Granularity**:
-   - Create coarser-grained tasks to reduce overhead
-   - Consider work-stealing approaches
+2. **Test with Larger Graphs**:
+   - The parallel version may show benefits with significantly larger graphs (100,000+ vertices)
+   - Increased problem size may amortize the parallelization overhead
+   - Stack overflow issues need to be addressed for very large graphs
 
-3. **Alternative Algorithms**:
-   - Consider BFS for better parallelization potential
-   - Use graph partitioning for better load balance
+3. **Reduce Synchronization Overhead**:
+   - Minimize critical section usage by using thread-local data structures
+   - Consider lock-free data structures or atomic operations
+   - Batch operations to reduce synchronization frequency
 
-4. **Hardware Considerations**:
-   - Match thread count to available CPU cores
-   - Consider NUMA effects for multi-socket systems
+4. **Optimize Task Granularity**:
+   - Create coarser-grained tasks to reduce OpenMP task overhead
+   - Consider minimum subtree size thresholds before spawning new tasks
+   - Balance between parallelism and overhead
+
+5. **Alternative Approaches**:
+   - Consider BFS (Breadth-First Search) which has better parallelization characteristics
+   - Use graph partitioning to create independent work units
+   - Implement iterative DFS to avoid stack overflow issues
+
+6. **Race Condition Prevention**:
+   - The current implementation correctly avoids race conditions through critical sections
+   - However, these critical sections are the primary performance bottleneck
+   - Future implementations should explore alternative synchronization strategies
 
 ---
 
