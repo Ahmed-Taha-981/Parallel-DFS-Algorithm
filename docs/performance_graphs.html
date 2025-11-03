@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Profiling Graphs - DFS Traversal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 40px 0;
+        }
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .info-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Performance Profiling: DFS Traversal Analysis</h1>
+        
+        <div class="info-box">
+            <strong>Key Finding:</strong> The parallel implementation demonstrates negative speedup (speedup &lt; 1.0) across all thread counts, with the serial version outperforming the parallel version by 5.5× to 17.5×.
+        </div>
+
+        <!-- Chart 1: Execution Time Comparison -->
+        <div class="chart-title">1. Execution Time: Serial vs Parallel</div>
+        <div class="chart-container">
+            <canvas id="timeChart"></canvas>
+        </div>
+
+        <!-- Chart 2: Speedup Analysis -->
+        <div class="chart-title">2. Speedup vs Number of Threads</div>
+        <div class="chart-container">
+            <canvas id="speedupChart"></canvas>
+        </div>
+
+        <!-- Chart 3: Efficiency Analysis -->
+        <div class="chart-title">3. Efficiency vs Number of Threads</div>
+        <div class="chart-container">
+            <canvas id="efficiencyChart"></canvas>
+        </div>
+
+        <!-- Chart 4: Performance Degradation -->
+        <div class="chart-title">4. Performance Degradation Factor (How Many Times Slower Than Serial)</div>
+        <div class="chart-container">
+            <canvas id="degradationChart"></canvas>
+        </div>
+
+        <!-- Chart 5: Combined Speedup and Efficiency -->
+        <div class="chart-title">5. Speedup and Efficiency Comparison</div>
+        <div class="chart-container">
+            <canvas id="comparisonChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Data from profiling results
+        const threads = [2, 4, 8, 16];
+        const T_S_ms = 0.571;  // Serial time in milliseconds
+        const T_P_ms = [3.119, 4.229, 8.202, 9.997];  // Parallel times in milliseconds
+        const speedup = [0.1829, 0.1349, 0.0696, 0.0571];
+        const efficiency = [9.15, 3.37, 0.87, 0.36];  // In percentage
+        const degradation = [5.5, 7.4, 14.4, 17.5];  // How many times slower
+
+        // Ideal speedup (linear)
+        const idealSpeedup = threads.map(t => t);
+
+        // Chart 1: Execution Time
+        const timeCtx = document.getElementById('timeChart').getContext('2d');
+        new Chart(timeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Serial', ...threads.map(t => `${t} threads`)],
+                datasets: [{
+                    label: 'Execution Time (ms)',
+                    data: [T_S_ms, ...T_P_ms],
+                    backgroundColor: ['#4CAF50', '#f44336', '#f44336', '#f44336', '#f44336'],
+                    borderColor: ['#45a049', '#d32f2f', '#d32f2f', '#d32f2f', '#d32f2f'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Time: ${context.parsed.y.toFixed(3)} ms`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Execution Time (milliseconds)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Configuration'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 2: Speedup
+        const speedupCtx = document.getElementById('speedupChart').getContext('2d');
+        new Chart(speedupCtx, {
+            type: 'line',
+            data: {
+                labels: threads.map(t => `${t} threads`),
+                datasets: [{
+                    label: 'Measured Speedup',
+                    data: speedup,
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 8,
+                    pointBackgroundColor: '#2196F3',
+                    tension: 0.3
+                }, {
+                    label: 'Ideal Linear Speedup',
+                    data: idealSpeedup,
+                    borderColor: '#9E9E9E',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0
+                }, {
+                    label: 'Baseline (No Speedup)',
+                    data: threads.map(() => 1.0),
+                    borderColor: '#F44336',
+                    borderWidth: 2,
+                    borderDash: [2, 2],
+                    pointRadius: 0,
+                    tension: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y.toFixed(4)}`;
+                            }
+                        }
+                    },
+                    annotation: {
+                        annotations: {
+                            note: {
+                                type: 'label',
+                                content: 'Speedup < 1.0 indicates parallel version is slower',
+                                position: { x: 'center', y: 'bottom' }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Speedup (S = T_S / T_P)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Number of Threads (p)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 3: Efficiency
+        const efficiencyCtx = document.getElementById('efficiencyChart').getContext('2d');
+        new Chart(efficiencyCtx, {
+            type: 'line',
+            data: {
+                labels: threads.map(t => `${t} threads`),
+                datasets: [{
+                    label: 'Efficiency (%)',
+                    data: efficiency,
+                    borderColor: '#9C27B0',
+                    backgroundColor: 'rgba(156, 39, 176, 0.2)',
+                    borderWidth: 3,
+                    pointRadius: 8,
+                    pointBackgroundColor: '#9C27B0',
+                    fill: true,
+                    tension: 0.3
+                }, {
+                    label: 'Ideal Efficiency (100%)',
+                    data: threads.map(() => 100),
+                    borderColor: '#4CAF50',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: Math.max(...efficiency) * 1.5,
+                        title: {
+                            display: true,
+                            text: 'Efficiency (%)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Number of Threads (p)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 4: Performance Degradation
+        const degradationCtx = document.getElementById('degradationChart').getContext('2d');
+        new Chart(degradationCtx, {
+            type: 'bar',
+            data: {
+                labels: threads.map(t => `${t} threads`),
+                datasets: [{
+                    label: 'Performance Degradation Factor',
+                    data: degradation,
+                    backgroundColor: '#FF9800',
+                    borderColor: '#F57C00',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.parsed.y.toFixed(1)}× slower than serial`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Degradation Factor (× slower)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Number of Threads (p)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 5: Comparison
+        const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+        new Chart(comparisonCtx, {
+            type: 'bar',
+            data: {
+                labels: threads.map(t => `${t} threads`),
+                datasets: [{
+                    label: 'Speedup (S)',
+                    data: speedup,
+                    backgroundColor: '#2196F3',
+                    borderColor: '#1976D2',
+                    borderWidth: 2
+                }, {
+                    label: 'Efficiency (E)',
+                    data: efficiency.map(e => e / 100),  // Convert to decimal
+                    backgroundColor: '#9C27B0',
+                    borderColor: '#7B1FA2',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.dataset.label === 'Efficiency (E)' 
+                                    ? (context.parsed.y * 100).toFixed(2) + '%'
+                                    : context.parsed.y.toFixed(4);
+                                return `${context.dataset.label}: ${value}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Normalized Performance Metric'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Number of Threads (p)'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+

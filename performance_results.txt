@@ -1,0 +1,14 @@
+Performance Profiling Results
+============================
+
+Graph size: 10000 vertices
+Iterations per measurement: 5
+
+Serial Time (T_S): 0.000571 seconds
+
+Threads   T_P (seconds)  Speedup (S)    Efficiency (E) 
+-------------------------------------------
+2         0.003119       0.1829         0.0915         
+4         0.004229       0.1349         0.0337         
+8         0.008202       0.0696         0.0087         
+16        0.009997       0.0571         0.0036         
