@@ -3,7 +3,7 @@
 #include <ctime>
 using namespace std;
 
-void dfsRec(vector<vector<int>> &adj, vector<bool> &visited, int s, vector<int> &res) {
+void dfsRec(vector<vector<int>> &adj, vector<bool> &visited, int s, vector<int> &res, int stride) {
     visited[s] = true;
     res.push_back(s);
 
@@ -13,12 +13,25 @@ void dfsRec(vector<vector<int>> &adj, vector<bool> &visited, int s, vector<int> 
         work += (s * i) % 100;
     }
 
-    for (int i : adj[s])
+    for (int idx = 0; idx < adj[s].size(); idx += stride)
+    {
+        int i = adj[s][idx];
         if (visited[i] == false)
-            dfsRec(adj, visited, i, res);
+            dfsRec(adj, visited, i, res, stride);
+    }
+    
+    for (int idx = 0; idx < adj[s].size(); idx++)
+    {
+        if (idx % stride != 0)
+        {
+            int i = adj[s][idx];
+            if (visited[i] == false)
+                dfsRec(adj, visited, i, res, stride);
+        }
+    }
 }
 
-vector<int> dfs(vector<vector<int>> &adj) {
+vector<int> dfs(vector<vector<int>> &adj, int stride) {
     vector<bool> visited(adj.size(), false);
     vector<int> res;
 
@@ -26,7 +39,7 @@ vector<int> dfs(vector<vector<int>> &adj) {
     {
         if (visited[i] == false)
         {
-            dfsRec(adj, visited, i, res);
+            dfsRec(adj, visited, i, res, stride);
         }
     }
     return res;
@@ -54,24 +67,35 @@ int main()
 
     cout << "Graph created successfully!" << endl;
 
-    cout << "DFS Traversal of the graph (Serial):" << endl;
+    int strides[] = {1, 2, 4, 8, 16};
+    int num_strides = sizeof(strides) / sizeof(strides[0]);
 
-    clock_t start = clock();
-
-    vector<int> result = dfs(adj);
-
-    clock_t end = clock();
-
-    double time_seconds = double(end - start) / CLOCKS_PER_SEC;
-    double time_ms = time_seconds * 1000.0;
-
-    cout << "Total vertices visited: " << result.size() << endl;
-    cout << "First 10 vertices: ";
-    for (int i = 0; i < 10 && i < result.size(); i++)
+    for (int s = 0; s < num_strides; s++)
     {
-        cout << result[i] << " ";
+        int stride = strides[s];
+        cout << "DFS Traversal of the graph (Serial):" << endl;
+        cout << "Stride size: " << stride << endl;
+
+        clock_t start = clock();
+
+        vector<int> result = dfs(adj, stride);
+
+        clock_t end = clock();
+
+        double time_seconds = double(end - start) / CLOCKS_PER_SEC;
+        double time_ms = time_seconds * 1000.0;
+
+        cout << "Total vertices visited: " << result.size() << endl;
+        cout << "First 10 vertices: ";
+        for (int i = 0; i < 10 && i < result.size(); i++)
+        {
+            cout << result[i] << " ";
+        }
+        cout << "..." << endl;
+        cout << "Execution time: " << time_ms << " milliseconds (ms)" << endl;
+        cout << endl;
     }
-    cout << "..." << endl << "Execution time: " << time_ms << " milliseconds (ms)" << endl;
+
 
     return 0;
 }
