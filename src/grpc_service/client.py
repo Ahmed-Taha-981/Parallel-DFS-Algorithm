@@ -3,8 +3,6 @@ import time
 import datetime
 import logging
 import grpc
-
-# Try import generated stubs
 import dfs_pb2
 import dfs_pb2_grpc
 
@@ -27,31 +25,68 @@ def main(replicas, duration, target, num_vertices, per_call_timeout, logfile):
     idx = 0
     total = 0
     successes = 0
+    
+    print(f"[CLIENT] Starting client with {len(replicas)} replica(s): {', '.join(replicas)}")
+    print(f"[CLIENT] Duration: {duration} seconds, Request interval: 0.1s")
+    print(f"[CLIENT] Per-call timeout: {per_call_timeout}s (will retry on timeout/slow response)")
+    print(f"[CLIENT] {'='*70}")
+    print()
 
     while time.time() - start_ts < duration:
-        endpoint = replicas[idx % len(replicas)]
+        # Round-robin starting point
+        start_idx = idx % len(replicas)
         idx += 1
         total += 1
-        try:
-            channel = grpc.insecure_channel(endpoint)
-            stub = dfs_pb2_grpc.DFSServiceStub(channel)
-            ok, resp, latency_ms = call_one(stub, target, num_vertices, timeout_s=per_call_timeout)
-            if ok:
-                successes += 1
-                logging.info('endpoint=%s latency_ms=%.2f found=%s visited=%d runtime_ms=%.2f', endpoint, latency_ms, resp.found, resp.visited_count, resp.runtime_ms)
-            else:
-                err = resp
-                logging.warning('endpoint=%s error=%s', endpoint, err)
-                # try next replica immediately
-                continue
-        except Exception as e:
-            logging.warning('endpoint=%s exception=%s', endpoint, e)
-            continue
+        
+        # Try all replicas in round-robin order before giving up
+        request_succeeded = False
+        for attempt in range(len(replicas)):
+            endpoint = replicas[(start_idx + attempt) % len(replicas)]
+            timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+            
+            try:
+                channel = grpc.insecure_channel(endpoint)
+                stub = dfs_pb2_grpc.DFSServiceStub(channel)
+                ok, resp, latency_ms = call_one(stub, target, num_vertices, timeout_s=per_call_timeout)
+                
+                if ok:
+                    successes += 1
+                    request_succeeded = True
+                    if attempt == 0:
+                        print(f"[{timestamp}] ✓ Request #{total} → {endpoint} (latency: {latency_ms:.2f}ms)")
+                    else:
+                        print(f"[{timestamp}] ✓ Request #{total} → RETRY SUCCESS on {endpoint} after {attempt} failure(s) (latency: {latency_ms:.2f}ms)")
+                    logging.info('endpoint=%s latency_ms=%.2f found=%s visited=%d runtime_ms=%.2f', endpoint, latency_ms, resp.found, resp.visited_count, resp.runtime_ms)
+                    break
+                else:
+                    # RPC returned error
+                    err = resp
+                    error_name = err.code().name if hasattr(err, 'code') and hasattr(err.code(), 'name') else str(err)
+                    if attempt == 0:
+                        print(f"[{timestamp}] ✗ Request #{total} → {endpoint} FAILED ({error_name}) - Retrying...")
+                    else:
+                        print(f"[{timestamp}]   → Retry {attempt}/{len(replicas)-1}: {endpoint} also FAILED ({error_name})")
+                    logging.warning('endpoint=%s error=%s (attempt %d/%d)', endpoint, err, attempt + 1, len(replicas))
+            except Exception as e:
+                # Connection error or other exception
+                error_msg = str(e)[:50]
+                if attempt == 0:
+                    print(f"[{timestamp}] ✗ Request #{total} → {endpoint} ERROR ({error_msg}) - Retrying...")
+                else:
+                    print(f"[{timestamp}]   → Retry {attempt}/{len(replicas)-1}: {endpoint} also ERROR ({error_msg})")
+                logging.warning('endpoint=%s exception=%s (attempt %d/%d)', endpoint, e, attempt + 1, len(replicas))
+        
+        if not request_succeeded:
+            timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+            print(f"[{timestamp}] ✗✗ Request #{total} → ALL REPLICAS FAILED")
+            logging.error('All replicas failed for request %d', total)
 
         # small pause between requests to avoid busy looping
         time.sleep(0.1)
 
-    print(f"Finished: total attempts={total}, successes={successes}")
+    print()
+    print(f"[CLIENT] {'='*70}")
+    print(f"[CLIENT] Finished: total attempts={total}, successes={successes}, success_rate={successes/total*100:.1f}%")
 
 
 if __name__ == '__main__':
@@ -60,7 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('--duration', type=int, default=60)
     parser.add_argument('--target', type=int, default=42000)
     parser.add_argument('--num-vertices', type=int, default=50000)
-    parser.add_argument('--per-call-timeout', type=int, default=30)
+    parser.add_argument('--per-call-timeout', type=int, default=3)
     parser.add_argument('--logfile', type=str, default='client.log')
     args = parser.parse_args()
 

@@ -73,3 +73,4 @@ test_results/
 coverage/
 .pytest_cache/
 
+src/grpc_service/IMPLEMENTATION_SUMMARY.md
