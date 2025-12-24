@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dfs;
+
+service DFSService {
+  // Run a DFS search; returns found flag, visited count and runtime in ms
+  rpc RunDFS (RunRequest) returns (RunResponse) {}
+}
+
+message RunRequest {
+  int32 target = 1;         // target vertex to search for (optional)
+  int32 num_vertices = 2;   // graph size (optional)
+  bool use_mpi = 3;         // whether to run MPI binary (default true)
+}
+
+message RunResponse {
+  bool found = 1;
+  int32 visited_count = 2;
+  double runtime_ms = 3;
+  string stdout = 4;
+  string stderr = 5;
+}
