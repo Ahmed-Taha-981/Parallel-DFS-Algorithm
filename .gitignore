@@ -3,6 +3,10 @@
 *.out
 serial
 parallel
+mpi_dfs
+mpi_benchmark
+strong_scaling
+weak_scaling
 *.o
 *.obj
 
@@ -17,18 +21,55 @@ build/
 bin/
 obj/
 
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv
+grpc_venv/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# gRPC generated files (proto stubs)
+src/grpc_service/dfs_pb2.py
+src/grpc_service/dfs_pb2_grpc.py
+
+# Log files
+*.log
+server_*.log
+client*.log
+
 # IDE files
 .vs/
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
+*.iml
 
 # OS files
 .DS_Store
 Thumbs.db
+.directory
 
 # Temporary files
 *.tmp
-*.log
+*.bak
+*.swp
+
+# Profiling output
+gmon.out
+*.prof
+
+# Test artifacts
+test_results/
+coverage/
+.pytest_cache/
 
