@@ -6,14 +6,16 @@ This directory provides a fault-tolerant, replicated gRPC wrapper around the exi
 
 ## Key Files
 
-| File               | Purpose                                                                            |
-| ------------------ | ---------------------------------------------------------------------------------- |
-| `dfs.proto`        | gRPC API definition (RunDFS RPC)                                                   |
-| `server.py`        | Python gRPC server; executes DFS binary on demand, logs timestamp + latency        |
-| `client.py`        | Client that sends continuous requests for ≥60s and auto-retries on replica failure |
-| `run_replicas.ps1` | PowerShell helper to start 2 replicas on ports 50051 & 50052                       |
-| `requirements.txt` | Python dependencies (grpcio, grpcio-tools)                                         |
-| `TEST_RESULTS.md`  | Full test report showing normal operation + failover behavior                      |
+| File                        | Purpose                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| `dfs.proto`                 | gRPC API definition (RunDFS RPC)                                                   |
+| `server.py`                 | Python gRPC server; executes DFS binary on demand, logs timestamp + latency        |
+| `client.py`                 | Client that sends continuous requests for ≥60s and auto-retries on replica failure |
+| `run_replicas.ps1`          | PowerShell helper to start multiple replicas easily                               |
+| `inject_crash.ps1`          | Fault injection: Simulates service crash by killing a replica                     |
+| `inject_timeout.ps1`        | Fault injection: Simulates network/service disruption by suspending a process   |
+| `requirements.txt`          | Python dependencies (grpcio, grpcio-tools)                                        |
+| `FAULT_TOLERANCE_DEMO.md`   | Complete guide for Task 2: Fault tolerance demonstration                          |
 
 ## Quick Start (Windows, PowerShell)
 
@@ -25,17 +27,22 @@ python -m pip install -r requirements.txt
 python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. dfs.proto
 ```
 
-### 2. Start Replica 1
+### 2. Start Replicas
 
+**Option A: Using helper script (Recommended)**
 ```powershell
+cd src\grpc_service
+.\run_replicas.ps1 -NumReplicas 2 -StartPort 50051
+```
+
+**Option B: Manual start (2 separate terminals)**
+```powershell
+# Terminal 1
 cd src\grpc_service
 python server.py --port 50051 --logfile server_50051.log
 # Expected output: "DFS gRPC server listening on [::]:50051"
-```
 
-### 3. Start Replica 2 (new terminal)
-
-```powershell
+# Terminal 2
 cd src\grpc_service
 python server.py --port 50052 --logfile server_50052.log
 ```
@@ -62,20 +69,21 @@ python client.py --replicas localhost:50051,localhost:50052 --duration 60
 
    - Sends one request every 0.1 seconds for 60 seconds
    - **Round-robin** load balances across replicas
-   - On RPC error → **automatically retries** the next replica
+   - On RPC error → **automatically retries all replicas** before giving up
    - **Logs each request**: endpoint, latency, success/failure
 
 3. **Failover**:
    - If replica 1 crashes → client detects gRPC error
-   - Client immediately retries replica 2 (or next in list)
+   - Client immediately retries all remaining replicas in round-robin order
    - No manual intervention; requests continue uninterrupted
+   - System automatically recovers when failed replicas come back online
 
 ## Deliverables Met ✅
 
 | Requirement                    | How                                                                             |
 | ------------------------------ | ------------------------------------------------------------------------------- |
 | **Replication (2+ instances)** | Server runs on 2+ ports; start via manual commands                              |
-| **Auto-Retry / Failover**      | Client catches gRPC errors, moves to next replica in round-robin                |
+| **Auto-Retry / Failover**      | Client catches gRPC errors, retries all replicas before giving up                |
 | **Logging**                    | `server_<port>.log` has `request_ts=<timestamp> latency_ms=<value>` per request |
 | **Continuous 60+ seconds**     | Client parameter `--duration 60`                                                |
 | **Core algorithm unmodified**  | Wrapper calls DFS binary as subprocess; source code untouched                   |
@@ -90,7 +98,19 @@ python client.py --replicas localhost:50051,localhost:50052 --duration 60
    ```
 4. Observe that the client **continues** serving requests from the remaining replica(s)
 
-See [TEST_RESULTS.md](TEST_RESULTS.md) for detailed test output showing 100% success with both replicas, and continued operation when one fails.
+## Task 2: Fault Tolerance Demonstration
+
+For complete instructions on demonstrating fault tolerance with failure injection, see **[FAULT_TOLERANCE_DEMO.md](FAULT_TOLERANCE_DEMO.md)**.
+
+**Quick demo:**
+1. Start 2 replicas: `.\run_replicas.ps1 -NumReplicas 2`
+2. Start client: `python client.py --duration 60`
+3. Inject crash: `.\inject_crash.ps1 -Port 50051`
+4. Observe automatic failover to replica 2
+
+**Available fault injection scripts:**
+- `inject_crash.ps1` - Kill a replica (service crash)
+- `inject_timeout.ps1` - Suspend a replica temporarily (network/service disruption)
 
 ## Command-Line Options
 
@@ -116,5 +136,5 @@ python client.py --replicas localhost:50051,localhost:50052 --duration 60 --logf
 - `--duration` — Run time in seconds (default 60)
 - `--target` — Target vertex (default 42000)
 - `--num-vertices` — Graph size (default 50000)
-- `--per-call-timeout` — RPC timeout (default 30)
+- `--per-call-timeout` — RPC timeout (default 3)
 - `--logfile` — Log file path (default `client.log`)
