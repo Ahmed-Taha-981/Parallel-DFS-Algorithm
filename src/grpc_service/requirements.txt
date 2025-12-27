@@ -1,2 +1,5 @@
 grpcio>=1.50
 grpcio-tools>=1.50
+pyspark>=3.0.0
+pandas>=1.0.0
+matplotlib>=3.0.0
