@@ -130,7 +130,7 @@ class StreamingDFSClient:
                 error_msg = str(e)[:100]
                 
                 if attempt < len(self.replicas) - 1:
-                    print(f"  ⚠ Request #{request_id} → {endpoint} ERROR ({error_msg}) - Retrying on next replica...")
+                    print(f"  Request #{request_id} → {endpoint} ERROR ({error_msg}) - Retrying on next replica...")
                     continue
                 else:
                     end_time = time.time()
@@ -166,7 +166,7 @@ def process_batch(batch_df, batch_id, client, output_path):
     - Results are collected and logged
     """
     print(f"\n{'='*80}")
-    print(f"📦 PROCESSING MICRO-BATCH #{batch_id} at {datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]}")
+    print(f"PROCESSING MICRO-BATCH #{batch_id} at {datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]}")
     print(f"{'='*80}")
     
     # Collect batch data
@@ -184,7 +184,7 @@ def process_batch(batch_df, batch_id, client, output_path):
         request_id = row['value']
         timestamp = row['timestamp']
         
-        print(f"\n  🚀 Sending Request #{request_id} at {datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]}")
+        print(f"\n  Sending Request #{request_id} at {datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]}")
         
         # Call gRPC with retry logic
         result = client.call_grpc_with_retry(request_id, timestamp)
@@ -194,10 +194,10 @@ def process_batch(batch_df, batch_id, client, output_path):
             
             # Print result
             if result['status'] == 'SUCCESS':
-                print(f"  ✓ Request #{result['request_id']} → {result['endpoint']} "
+                print(f"  Request #{result['request_id']} → {result['endpoint']} "
                       f"(latency: {result['latency_ms']:.2f}ms, visited: {result['visited_count']})")
             else:
-                print(f"  ✗ Request #{result['request_id']} → FAILED after {result['attempt_number']} attempts "
+                print(f"  Request #{result['request_id']} → FAILED after {result['attempt_number']} attempts "
                       f"(error: {result['error_message']})")
     
     # Create DataFrame from results and write to CSV
@@ -225,10 +225,10 @@ def process_batch(batch_df, batch_id, client, output_path):
         # Append to CSV log file
         results_df.write.mode('append').csv(output_path, header=True)
         
-        print(f"\n  📝 Logged {len(results)} result(s) to {output_path}")
+        print(f"\n  Logged {len(results)} result(s) to {output_path}")
     
     # Print statistics
-    print(f"\n  📊 Current Statistics:")
+    print(f"\n  Current Statistics:")
     print(f"     Total Requests: {client.request_counter}")
     print(f"     Successes: {client.success_counter} ({client.success_counter/max(client.request_counter,1)*100:.1f}%)")
     print(f"     Failures: {client.failure_counter} ({client.failure_counter/max(client.request_counter,1)*100:.1f}%)")
@@ -258,9 +258,9 @@ def main():
     replicas = [r.strip() for r in args.replicas.split(',') if r.strip()]
     
     print("\n" + "="*80)
-    print("🌊 SPARK STREAMING DFS CLIENT")
+    print("SPARK STREAMING DFS CLIENT")
     print("="*80)
-    print(f"\n📋 Configuration:")
+    print(f"\n Configuration:")
     print(f"   Replicas: {', '.join(replicas)}")
     print(f"   Request Rate: {args.requests_per_second} requests/second")
     print(f"   Duration: {args.duration} seconds")
@@ -269,7 +269,7 @@ def main():
     print(f"   Number of Vertices: {args.num_vertices}")
     print(f"   Per-call Timeout: {args.per_call_timeout}s")
     print(f"   Output Log Directory: {args.output_log}/")
-    print(f"\n📡 STREAMING EXPLAINED:")
+    print(f"\n STREAMING EXPLAINED:")
     print(f"   • Spark will generate a continuous stream of DFS requests")
     print(f"   • Rate source generates {args.requests_per_second} rows/second (each row = 1 request)")
     print(f"   • Requests are processed in micro-batches (every 2 seconds)")
@@ -279,7 +279,7 @@ def main():
     print("="*80 + "\n")
     
     # Create Spark session
-    print("🔧 Initializing Spark Session...")
+    print("Initializing Spark Session...")
     spark = SparkSession.builder \
         .appName("StreamingDFSClient") \
         .master("local[*]") \
@@ -295,7 +295,7 @@ def main():
     
     # Create streaming DataFrame using rate source
     # The 'rate' source generates rows with: timestamp (current time) and value (incrementing number)
-    print(f"🌊 Starting rate stream generator ({args.requests_per_second} requests/second)...")
+    print(f" Starting rate stream generator ({args.requests_per_second} requests/second)...")
     
     stream_df = spark.readStream \
         .format("rate") \
@@ -303,8 +303,8 @@ def main():
         .option("numPartitions", 1) \
         .load()
     
-    print("✓ Stream source created\n")
-    print("🚀 Starting stream processing...\n")
+    print(" Stream source created\n")
+    print(" Starting stream processing...\n")
     
     # Start streaming query with foreachBatch
     query = stream_df.writeStream \
@@ -321,20 +321,20 @@ def main():
         print("\n\n⚠ Interrupted by user")
     
     # Stop the stream
-    print("\n\n🛑 Stopping stream...")
+    print("\n\n Stopping stream...")
     query.stop()
     query.awaitTermination(timeout=10)
     
     # Final statistics
     print("\n" + "="*80)
-    print("📊 FINAL STATISTICS")
+    print(" FINAL STATISTICS")
     print("="*80)
     print(f"Total Requests Sent: {client.request_counter}")
     print(f"Successful Requests: {client.success_counter} ({client.success_counter/max(client.request_counter,1)*100:.1f}%)")
     print(f"Failed Requests: {client.failure_counter} ({client.failure_counter/max(client.request_counter,1)*100:.1f}%)")
     print(f"Actual Duration: {time.time() - start_time:.1f} seconds")
     print(f"Average Request Rate: {client.request_counter / (time.time() - start_time):.2f} requests/second")
-    print(f"\n📁 Detailed logs saved to: {args.output_log}/")
+    print(f"\nDetailed logs saved to: {args.output_log}/")
     print("="*80 + "\n")
     
     # Stop Spark
