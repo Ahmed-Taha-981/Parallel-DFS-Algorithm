@@ -24,7 +24,7 @@ CRASH_TARGET_PORT = 50052
 LOG_DIR = "streaming_logs"
 
 def cleanup():
-    print("🧹 [Cleanup] Improving hygiene...")
+    print("[Cleanup] Improving hygiene...")
     os.system("taskkill /F /IM python.exe /T >nul 2>&1")
     time.sleep(2) # Wait for processes to release locks
     
@@ -32,7 +32,7 @@ def cleanup():
         try:
             shutil.rmtree(LOG_DIR)
         except Exception as e:
-            print(f"⚠️ Warning: Could not remove {LOG_DIR}: {e}")
+            print(f"Warning: Could not remove {LOG_DIR}: {e}")
             # Try to just clear contents if folder is locked
             for filename in os.listdir(LOG_DIR):
                 file_path = os.path.join(LOG_DIR, filename)
@@ -47,7 +47,7 @@ def cleanup():
 
 def main():
     print("="*60)
-    print("🚀 STARTING FULL PERFORMANCE EXPERIMENT")
+    print("STARTING FULL PERFORMANCE EXPERIMENT")
     print("="*60)
     
     # 1. Cleanup
@@ -70,7 +70,7 @@ def main():
         # We assume server.py is in current dir
         p = subprocess.Popen(cmd)
         processes.append(p)
-        print(f"  ✓ Replica {i+1} (Port {port}) started (PID: {p.pid})")
+        print(f"  Replica {i+1} (Port {port}) started (PID: {p.pid})")
         
     time.sleep(3) # Warmup
 
@@ -98,7 +98,7 @@ def main():
     time.sleep(CRASH_DELAY)
 
     # 5. Inject Crash
-    print(f"\n[4/6] 💥 INJECTING CRASH on Port {CRASH_TARGET_PORT}...")
+    print(f"\n[4/6] INJECTING CRASH on Port {CRASH_TARGET_PORT}...")
     # Target is index 1 (50051 + 1 = 50052)
     target_proc = processes[1]
     target_proc.terminate()
@@ -110,7 +110,7 @@ def main():
     client_proc.wait()
     client_out.close()
     
-    print("\n✅ Experiment Run Complete.")
+    print("\nExperiment Run Complete.")
     
     # Stop remaining replicas
     for p in processes:
@@ -122,9 +122,9 @@ def main():
     if os.path.exists(log_file):
         subprocess.run([sys.executable, "generate_analysis_graphs.py", "--log-dir", LOG_DIR])
     else:
-        print("❌ Error: Log file not found. Experiment failed.")
+        print("Error: Log file not found. Experiment failed.")
         
-    print("\n🎉 DONE! Check 'performance_analysis.png'")
+    print("\nDONE! Check 'performance_analysis.png'")
 
 if __name__ == "__main__":
     main()

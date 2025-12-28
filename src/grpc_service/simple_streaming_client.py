@@ -160,7 +160,7 @@ class StreamingDFSClient:
                 
                 if attempt < len(self.replicas) - 1:
                     # Not the last attempt, continue to next replica
-                    print(f"  ⚠ Request #{request_id} → {endpoint} FAILED ({error_code}) - Retrying...")
+                    print(f"  Request #{request_id} → {endpoint} FAILED ({error_code}) - Retrying...")
                     continue
                 else:
                     # Last attempt failed
@@ -193,7 +193,7 @@ class StreamingDFSClient:
                 error_msg = str(e)[:100]
                 
                 if attempt < len(self.replicas) - 1:
-                    print(f"  ⚠ Request #{request_id} → {endpoint} ERROR ({error_msg[:50]}) - Retrying...")
+                    print(f"  Request #{request_id} → {endpoint} ERROR ({error_msg[:50]}) - Retrying...")
                     continue
                 else:
                     end_time = time.time()
@@ -231,7 +231,7 @@ def stream_requests(client, requests_per_second, duration):
     request_id = 0
     start_time = time.time()
     
-    print(f"\n🌊 Starting request stream at {requests_per_second} requests/second")
+    print(f"\nStarting request stream at {requests_per_second} requests/second")
     print(f"   (1 request every {interval*1000:.0f}ms)\n")
     
     batch_counter = 0
@@ -268,7 +268,7 @@ def stream_requests(client, requests_per_second, duration):
         # Show statistics every batch_size requests
         if batch_counter >= batch_size:
             elapsed = time.time() - start_time
-            print(f"\n  📊 Stream Statistics (after {elapsed:.1f}s):")
+            print(f"\n  Stream Statistics (after {elapsed:.1f}s):")
             print(f"     Events Processed: {client.request_counter}")
             print(f"     Successes: {client.success_counter} ({client.success_counter/max(client.request_counter,1)*100:.1f}%)")
             print(f"     Failures: {client.failure_counter}")
@@ -310,18 +310,18 @@ def main():
         args.duration = 60
     
     print("\n" + "="*80)
-    print("🌊 STREAMING DFS CLIENT (Simple Implementation)")
+    print("STREAMING DFS CLIENT (Simple Implementation)")
     print("="*80)
-    print(f"\n📋 Configuration:")
+    print(f"\n Configuration:")
     print(f"   Replicas: {', '.join(replicas)}")
-    print(f"   ⚡ Request Rate: {args.requests_per_second} requests/second (ADJUSTABLE)")
-    print(f"   ⏱  Duration: {args.duration} seconds")
-    print(f"   📊 Expected Total Events: ~{args.requests_per_second * args.duration}")
-    print(f"   🎯 Target Vertex: {args.target}")
-    print(f"   🔢 Number of Vertices: {args.num_vertices}")
-    print(f"   ⏰ Per-call Timeout: {args.per_call_timeout}s")
-    print(f"   📁 Event Log File: {args.log_file}")
-    print(f"\n📡 STREAMING EXPLAINED:")
+    print(f"   Request Rate: {args.requests_per_second} requests/second (ADJUSTABLE)")
+    print(f"   Duration: {args.duration} seconds")
+    print(f"   Expected Total Events: ~{args.requests_per_second * args.duration}")
+    print(f"   Target Vertex: {args.target}")
+    print(f"   Number of Vertices: {args.num_vertices}")
+    print(f"   Per-call Timeout: {args.per_call_timeout}s")
+    print(f"   Event Log File: {args.log_file}")
+    print(f"\n STREAMING EXPLAINED:")
     print(f"   • Continuous stream of DFS requests generated at {args.requests_per_second} req/sec")
     print(f"   • Each request is an 'event' with a timestamp")
     print(f"   • Events are immediately processed and sent to gRPC servers")
@@ -356,7 +356,7 @@ def main():
     
     # Final statistics
     print("\n" + "="*80)
-    print("📊 FINAL STREAMING STATISTICS")
+    print("FINAL STREAMING STATISTICS")
     print("="*80)
     print(f"Total Stream Events: {client.request_counter}")
     print(f"Successful Events: {client.success_counter} ({client.success_counter/max(client.request_counter,1)*100:.1f}%)")
@@ -365,7 +365,7 @@ def main():
     print(f"Target Rate: {args.requests_per_second} events/second")
     print(f"Actual Rate: {client.request_counter / actual_duration:.2f} events/second")
     print(f"Rate Accuracy: {(client.request_counter / actual_duration) / args.requests_per_second * 100:.1f}%")
-    print(f"\n📁 Detailed event logs with timestamps saved to: {args.log_file}")
+    print(f"\nDetailed event logs with timestamps saved to: {args.log_file}")
     print(f"   Open this CSV file to see:")
     print(f"   - event_timestamp: When each event was generated")
     print(f"   - processing_timestamp: When it was processed")
