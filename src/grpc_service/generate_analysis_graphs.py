@@ -133,7 +133,7 @@ def generate_graphs(log_dir):
     plt.tight_layout()
     output_file = 'performance_analysis.png'
     plt.savefig(output_file, dpi=300)
-    print(f"✅ Graphs generated: {output_file}")
+    print(f"Graphs generated: {output_file}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

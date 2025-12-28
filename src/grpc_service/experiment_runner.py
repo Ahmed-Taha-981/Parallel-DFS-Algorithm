@@ -60,7 +60,7 @@ def run_experiment():
         
         p = subprocess.Popen(cmd, cwd=os.getcwd())
         processes.append(p)
-        print(f"  ✓ Started Replica {i+1} on port {port} (PID: {p.pid})")
+        print(f" Started Replica {i+1} on port {port} (PID: {p.pid})")
     
     time.sleep(5) # Warmup
 
@@ -82,20 +82,20 @@ def run_experiment():
     # Capture output to debug
     client_log = open("client_stdout.log", "w")
     client_process = subprocess.Popen(client_cmd, cwd=os.getcwd(), stdout=client_log, stderr=subprocess.STDOUT)
-    print(f"  ✓ Client started (PID: {client_process.pid}) - logging to client_stdout.log")
+    print(f"  Client started (PID: {client_process.pid}) - logging to client_stdout.log")
 
     # 3. Wait for pre-crash period
     print(f"\n[3/5] Running normal operation for {CRASH_DELAY}s...")
     time.sleep(CRASH_DELAY)
 
     # 4. Inject Failure
-    print(f"\n[4/5] 💥 INJECTING FAILURE: Crashing Replica on Port {CRASH_TARGET_PORT}...")
+    print(f"\n[4/5] INJECTING FAILURE: Crashing Replica on Port {CRASH_TARGET_PORT}...")
     
     # Find the process for the target port
     # In our list 'processes', index 1 corresponds to 50052
     target_proc = processes[1] 
     target_proc.terminate() # or kill()
-    print(f"  ✓ Killed process {target_proc.pid} on port {CRASH_TARGET_PORT}")
+    print(f"  Killed process {target_proc.pid} on port {CRASH_TARGET_PORT}")
     
     # Optional: You can use inject_crash.ps1 via subprocess if you prefer that
     # subprocess.run(["powershell", "-File", "inject_crash.ps1", "-Port", str(CRASH_TARGET_PORT)])
@@ -105,7 +105,7 @@ def run_experiment():
     print(f"\n[5/5] Observing recovery for remaining {remaining_time}s...")
     
     client_process.wait()
-    print("\n✅ Experiment Complete.")
+    print("\nExperiment Complete.")
     
     cleanup()
 
